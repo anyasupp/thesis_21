@@ -1,0 +1,698 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar 18 10:50:04 2021
+
+@author: AnyaS
+"""
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+#%%
+data = pd.read_excel("20210318_3T_all_conditions_wide.xlsx")
+#%% seperate all into conditions
+groups=data.groupby('Condition')
+
+#make new dataframe with cyan,green,red with correct fish ID
+LD_group = [groups.get_group('LD')]
+LD_group = pd.concat(LD_group)
+
+LL_group = [groups.get_group('LL')]
+LL_group = pd.concat(LL_group)
+
+
+FR_group = [groups.get_group('FR')]
+FR_group = pd.concat(FR_group)#%%
+
+#%%
+"""
+Do LD first 
+"""
+#prep data to have only change, fish id, and time
+LD_dataprep = LD_group.drop(['Condition'],1)
+
+#set index for fish)ID -- to wide
+LD_dataprep=LD_dataprep.set_index('Fish_ID')
+
+LD_dataprep = LD_dataprep.T
+#%%
+#do puncta diff from previous row
+LD_pdiff= LD_dataprep.diff()
+# do RoC
+LD_roc = LD_dataprep.pct_change()*100
+# do percentage change from baseline
+LD_initial = np.array([LD_dataprep.iloc[0,:]]*3) #create frame with inital datapoint (*3 because 3 timepoints)
+LD_perch = np.array(((LD_dataprep-LD_initial)/LD_initial)*100)
+LD_perch = pd.DataFrame(LD_perch) #perch = Percentage Change
+
+#do z score
+from scipy.stats import zscore
+LD_puncta_zscore = LD_dataprep.apply(zscore, nan_policy='omit')
+
+#%%combine all into LD_dataframe 
+#for RoC
+#then melt LL percent change baseline
+LD_roc=LD_roc.T #transpose back to FishIDon index
+LD_roc=LD_roc.reset_index()
+#change nan firstTimepoint to zero 
+LD_roc['dpf7_0'] = LD_roc['dpf7_0'].fillna(0)
+LD_roc=pd.melt(LD_roc,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LD_roc=LD_roc.rename(columns={'value':'RoC','variable':'Time'})
+
+# for pdiff
+LD_pdiff=LD_pdiff.T #transpose back to FishIDon index
+LD_pdiff=LD_pdiff.reset_index()
+LD_pdiff=pd.melt(LD_pdiff,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LD_pdiff=LD_pdiff.rename(columns={'value':'Puncta_delta','variable':'Time'})
+
+# for zscore
+LD_puncta_zscore=LD_puncta_zscore.T #transpose back to FishIDon index
+LD_puncta_zscore=LD_puncta_zscore.reset_index()
+LD_puncta_zscore=pd.melt(LD_puncta_zscore,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LD_puncta_zscore=LD_puncta_zscore.rename(columns={'value':'Puncta_zscore','variable':'Time'})
+
+#for baseline percentage change == perch
+#get fish index as was using np.array before lost Index of DF
+LD_Fish_ID = LD_dataprep.T
+# LD_Fish_ID=LD_Fish_ID.reset_index()
+LD_perch.insert(1,'Fish_ID',LD_Fish_ID.Fish_ID,True)
+#then melt LL percent change baseline
+LD_perch=pd.melt(LD_perch,id_vars='Fish_ID',value_vars=[0,1,2])
+LD_perch['Time'] = LD_perch['variable'].map({0:'dpf7_0',1:'dpf7_10',2:'dpf8_0'})
+LD_perch=LD_perch.rename(columns={'value':'Baseline_perch'})
+LD_perch=LD_perch.drop(['variable'],1)
+
+# same format for puncta
+LD_puncta = LD_group.drop(['Condition'],1)
+LD_puncta=pd.melt(LD_puncta,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LD_puncta=LD_puncta.rename(columns={'value':'Puncta','variable':'Time'})
+
+#same for condition
+LD_cond = np.array(['LD']*len(LD_puncta.index))
+#%% combine LD
+LD_puncta.insert(3,'RoC',LD_roc.RoC,True) 
+LD_puncta.insert(4,'Puncta_zscore',LD_puncta_zscore.Puncta_zscore,True) 
+LD_puncta.insert(5,'Baseline_perch',LD_perch.Baseline_perch,True) 
+LD_puncta.insert(6,'Puncta_delta',LD_pdiff.Puncta_delta,True) 
+LD_puncta.insert(7,'Condition',LD_cond,True) 
+#%%
+"""
+Do for LL
+"""
+
+#prep data to have only change, fish id, and time
+LL_dataprep = LL_group.drop(['Condition'],1)
+
+#set index for fish)ID -- to wide
+LL_dataprep=LL_dataprep.set_index('Fish_ID')
+
+LL_dataprep = LL_dataprep.T
+#%%
+#do puncta diff from previous row
+LL_pdiff= LL_dataprep.diff()
+# do RoC
+LL_roc = LL_dataprep.pct_change()*100
+# do percentage change from baseline
+LL_initial = np.array([LL_dataprep.iloc[0,:]]*3) #create frame with inital datapoint (*3 because 3 timepoints)
+LL_perch = np.array(((LL_dataprep-LL_initial)/LL_initial)*100)
+LL_perch = pd.DataFrame(LL_perch) #perch = Percentage Change
+
+#do z score
+from scipy.stats import zscore
+LL_puncta_zscore = LL_dataprep.apply(zscore, nan_policy='omit')
+
+#%%combine all into LD_dataframe 
+#for RoC
+#then melt LL percent change baseline
+LL_roc=LL_roc.T #transpose back to FishIDon index
+LL_roc=LL_roc.reset_index()
+#change nan firstTimepoint to zero 
+LL_roc['dpf7_0'] = LL_roc['dpf7_0'].fillna(0)
+LL_roc=pd.melt(LL_roc,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LL_roc=LL_roc.rename(columns={'value':'RoC','variable':'Time'})
+
+# for pdiff
+LL_pdiff=LL_pdiff.T #transpose back to FishIDon index
+LL_pdiff=LL_pdiff.reset_index()
+LL_pdiff=pd.melt(LL_pdiff,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LL_pdiff=LL_pdiff.rename(columns={'value':'Puncta_delta','variable':'Time'})
+
+# for zscore
+LL_puncta_zscore=LL_puncta_zscore.T #transpose back to FishIDon index
+LL_puncta_zscore=LL_puncta_zscore.reset_index()
+LL_puncta_zscore=pd.melt(LL_puncta_zscore,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LL_puncta_zscore=LL_puncta_zscore.rename(columns={'value':'Puncta_zscore','variable':'Time'})
+
+#for baseline percentage change == perch
+#get fish index as was using np.array before lost Index of DF
+LL_Fish_ID = LL_dataprep.T
+LL_Fish_ID=LL_Fish_ID.reset_index()
+LL_perch=LL_perch.T
+LL_perch.insert(1,'Fish_ID',LL_Fish_ID.Fish_ID,True)
+#then melt LL percent change baseline
+LL_perch=pd.melt(LL_perch,id_vars='Fish_ID',value_vars=[0,1,2])
+LL_perch['Time'] = LL_perch['variable'].map({0:'dpf7_0',1:'dpf7_10',2:'dpf8_0'})
+LL_perch=LL_perch.rename(columns={'value':'Baseline_perch'})
+LL_perch=LL_perch.drop(['variable'],1)
+
+# same format for puncta
+LL_puncta = LL_group.drop(['Condition'],1)
+LL_puncta=pd.melt(LL_puncta,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+LL_puncta=LL_puncta.rename(columns={'value':'Puncta','variable':'Time'})
+
+#same for condition
+LL_cond = np.array(['LL']*len(LL_puncta.index))
+#%% combine LD
+LL_puncta.insert(3,'RoC',LL_roc.RoC,True) 
+LL_puncta.insert(4,'Puncta_zscore',LL_puncta_zscore.Puncta_zscore,True) 
+LL_puncta.insert(5,'Baseline_perch',LL_perch.Baseline_perch,True) 
+LL_puncta.insert(6,'Puncta_delta',LL_pdiff.Puncta_delta,True) 
+LL_puncta.insert(7,'Condition',LL_cond,True) 
+
+#%%
+"""
+Do for FR
+"""
+
+#prep data to have only change, fish id, and time
+FR_dataprep = FR_group.drop(['Condition'],1)
+
+#set index for fish)ID -- to wide
+FR_dataprep=FR_dataprep.set_index('Fish_ID')
+
+FR_dataprep = FR_dataprep.T
+#%%
+#do puncta diff from previous row
+FR_pdiff= FR_dataprep.diff()
+# do RoC
+FR_roc = FR_dataprep.pct_change()*100
+# do percentage change from baseline
+FR_initial = np.array([FR_dataprep.iloc[0,:]]*3) #create frame with inital datapoint (*3 because 3 timepoints)
+FR_perch = np.array(((FR_dataprep-FR_initial)/FR_initial)*100)
+FR_perch = pd.DataFrame(FR_perch) #perch = Percentage Change
+
+#do z score
+from scipy.stats import zscore
+FR_puncta_zscore = FR_dataprep.apply(zscore, nan_policy='omit')
+
+#%%combine all into LD_dataframe 
+#for RoC
+#then melt LL percent change baseline
+FR_roc=FR_roc.T #transpose back to FishIDon index
+FR_roc=FR_roc.reset_index()
+#change nan firstTimepoint to zero 
+FR_roc['dpf7_0'] = FR_roc['dpf7_0'].fillna(0)
+FR_roc=pd.melt(FR_roc,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+FR_roc=FR_roc.rename(columns={'value':'RoC','variable':'Time'})
+
+# for pdiff
+FR_pdiff=FR_pdiff.T #transpose back to FishIDon index
+FR_pdiff=FR_pdiff.reset_index()
+FR_pdiff=pd.melt(FR_pdiff,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+FR_pdiff=FR_pdiff.rename(columns={'value':'Puncta_delta','variable':'Time'})
+
+# for zscore
+FR_puncta_zscore=FR_puncta_zscore.T #transpose back to FishIDon index
+FR_puncta_zscore=FR_puncta_zscore.reset_index()
+FR_puncta_zscore=pd.melt(FR_puncta_zscore,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+FR_puncta_zscore=FR_puncta_zscore.rename(columns={'value':'Puncta_zscore','variable':'Time'})
+
+#for baseline percentage change == perch
+#get fish index as was using np.array before lost Index of DF
+FR_Fish_ID = FR_dataprep.T
+FR_Fish_ID=FR_Fish_ID.reset_index()
+FR_perch=FR_perch.T
+FR_perch.insert(1,'Fish_ID',FR_Fish_ID.Fish_ID,True)
+#then melt LL percent change baseline
+FR_perch=pd.melt(FR_perch,id_vars='Fish_ID',value_vars=[0,1,2])
+FR_perch['Time'] = FR_perch['variable'].map({0:'dpf7_0',1:'dpf7_10',2:'dpf8_0'})
+FR_perch=FR_perch.rename(columns={'value':'Baseline_perch'})
+FR_perch=FR_perch.drop(['variable'],1)
+
+# same format for puncta
+FR_puncta = FR_group.drop(['Condition'],1)
+FR_puncta=pd.melt(FR_puncta,id_vars='Fish_ID',value_vars=['dpf7_0','dpf7_10','dpf8_0'])
+FR_puncta=FR_puncta.rename(columns={'value':'Puncta','variable':'Time'})
+
+#same for condition
+FR_cond = np.array(['FR']*len(FR_puncta.index))
+#%% combine LD
+FR_puncta.insert(3,'RoC',FR_roc.RoC,True) 
+FR_puncta.insert(4,'Puncta_zscore',FR_puncta_zscore.Puncta_zscore,True) 
+FR_puncta.insert(5,'Baseline_perch',FR_perch.Baseline_perch,True) 
+FR_puncta.insert(6,'Puncta_delta',FR_pdiff.Puncta_delta,True) 
+FR_puncta.insert(7,'Condition',FR_cond,True) 
+
+#%%
+"""
+make one big combined DF
+"""
+data_combined_3T = LD_puncta.append(LL_puncta)
+data_combined_3T = data_combined_3T.append(FR_puncta)
+
+#%%
+# data_combined_3T.to_excel("20210318_3T_data_combined.xlsx")
+
+#%%
+#C:\Users\AnyaS\Documents\Python Scripts\20210219_PK2old_freeRunning
+data_combined_3T = pd.read_excel("20210318_3T_data_combined_analyzed.xlsx")
+#%%
+# %%#make new dataframe with cyan,green,red with correct fish ID
+groups=data_combined_3T.groupby('Condition')
+
+LD_group = [groups.get_group('LD')]
+LD_group = pd.concat(LD_group)
+
+LL_group = [groups.get_group('LL')]
+LL_group = pd.concat(LL_group)
+
+
+FR_group = [groups.get_group('FR')]
+FR_group = pd.concat(FR_group)
+#%%
+#take out first timepoint when plotting RoC/Puncta diff
+data_combined_3T_no7dpf =  data_combined_3T[data_combined_3T.Time !='dpf7_0']
+LD_group_no7= LD_group[LD_group.Time !='dpf7_0']
+LL_group_no7= LL_group[LL_group.Time !='dpf7_0']
+FR_group_no7= FR_group[FR_group.Time !='dpf7_0']
+#%%
+palette= ['#5ec0eb','#dd90b5','#00ac87']
+
+#baseline at zero
+x1,y1 = [-0.5,2],[0,0]
+#%% Figure set up
+# paper_rc= {'lines.linewidth': 1.2}
+sns.set_context('paper')#
+# sns.reset_defaults()
+# sns.set(style='ticks',rc=paper_rc)
+
+row = 3
+column = 4
+fig, ax = plt.subplots(row,column, sharex=True)
+fig.suptitle('FingR.PSD95 dynamics ', fontsize=16)
+fig.set_size_inches(11,9)
+fig.tight_layout()
+#
+ax = plt.subplot(row,column,1)
+ax = sns.pointplot(x="Time", y="Puncta", data=data_combined_3T,hue="Condition",ci=68,dodge=True, palette = palette)
+
+ax.tick_params(axis='both', which='major', labelsize=14)
+ax.axvspan(-1, -0.1, alpha=0.15, color='grey')
+ax.axvspan(1.2, 1.9, alpha=0.15, color='grey')
+
+plt.xlim(-0.25,2.75 ) 
+plt.ylim(100,175) 
+
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+ax.get_legend().remove()
+
+# plt.legend(bbox_to_anchor=(1,1), loc='upper left')
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('Puncta Count')    
+ax.set_xlabel('')
+#
+# Puncta LD
+ax = plt.subplot(row,column,2)
+ax = sns.pointplot(x="Time", y="Puncta", data=LD_group,hue="Fish_ID",ci=68,dodge=True,color='#5ec0eb')
+
+ax.tick_params(axis='both', which='major', labelsize=14)
+ax.axvspan(-1, -0.1, alpha=0.55, color='grey')
+ax.axvspan(1.2, 1.9, alpha=0.55, color='grey')
+
+plt.xlim(-0.5,2.75 ) 
+plt.ylim(30,330) 
+
+# ax.tick_params(
+#     axis='x',          # changes apply to the x-axis
+#     which='both',      # both major and minor ticks are affected
+#     bottom=False,      # ticks along the bottom edge are off
+#     top=False,         # ticks along the top edge are off
+#     labelbottom=False) # labels along the bottom edge are off
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+ax.get_legend().remove()
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+#
+#Puncta LL
+ax = plt.subplot(row,column,3)
+ax = sns.pointplot(x="Time", y="Puncta", data=LL_group,hue="Fish_ID",ci=68,dodge=True,color='#dd90b5')
+
+ax.axvspan(-1, -0.1, alpha=0.3, color='Khaki')
+ax.axvspan(1.2, 1.9, alpha=0.3, color='Khaki')
+
+plt.xlim(-0.5,2.75 ) 
+plt.ylim(30,330) 
+
+ax.tick_params(
+    axis='y',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,
+    left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+ax.get_legend().remove()
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+# Puncta FR
+ax = plt.subplot(row,column,4)
+ax = sns.pointplot(x="Time", y="Puncta", data=FR_group,hue="Fish_ID",ci=68,dodge=True,color='#00ac87')
+
+ax.axvspan(-1, -0.1, alpha=0.3, color='Khaki')
+ax.axvspan(1.2, 1.9, alpha=0.3, color='Khaki')
+
+plt.xlim(-0.5,2.75 ) 
+plt.ylim(30,330) 
+
+ax.tick_params(
+    axis='y',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,
+    left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+ax.get_legend().remove()
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+#
+#ROC all
+ax = plt.subplot(row,column,5)
+plt.plot(x1,y1,'k--',alpha=0.65)
+ax = sns.pointplot(x="Time", y="RoC", data=data_combined_3T_no7dpf,hue="Condition",ci=68,dodge=0.1,palette=palette,join=False)
+#dodge=0.3, join=False
+ax.axvspan(0.16, 0.92, alpha=0.15, color='grey') 
+ax.tick_params(axis='both', which='major', labelsize=14)
+plt.xlim(-0.5,1.5 )  
+plt.ylim(-20,25)
+ax.tick_params(
+    axis='x',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('RoC (%)')    
+ax.set_xlabel('')
+
+#ROC LD
+ax = plt.subplot(row,column,6)
+ax = sns.pointplot(x="Time", y="RoC", data=LD_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#5ec0eb')
+ax.tick_params(axis='both', which='major', labelsize=14)
+plt.xlim(-0.5,1.5 )  
+ax.axvspan(0.16, 0.92, alpha=0.55, color='grey') 
+plt.ylim(-50,90) 
+
+ax.tick_params(
+    axis='x',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+#ROC LL
+ax = plt.subplot(row,column,7)
+ax = sns.pointplot(x="Time", y="RoC", data=LL_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#dd90b5')
+ax.tick_params(axis='both', which='major', labelsize=14)  
+plt.xlim(-0.5,1.5 )  
+ax.axvspan(0.16, 0.92, alpha=0.3, color='khaki') 
+plt.ylim(-50,90) 
+
+ax.tick_params(
+    axis='both',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+
+
+#ROC FR
+ax = plt.subplot(row,column,8)
+ax = sns.pointplot(x="Time", y="RoC", data=FR_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#00ac87')
+
+plt.xlim(-0.5,1.5 )
+ax.axvspan(0.16, 0.92, alpha=0.3, color='khaki')
+plt.ylim(-50,90) 
+
+ax.tick_params(
+    axis='both',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+
+#
+#deltapuncta
+ax = plt.subplot(row,column,9)
+plt.plot(x1,y1,'k--',alpha=0.65)
+ax = sns.pointplot(x="Time", y="Puncta_delta", data=data_combined_3T_no7dpf,hue="Condition",ci=68,dodge=0.1,palette=palette,join=False)
+ax.tick_params(axis='both', which='major', labelsize=14)  
+ax.axvspan(0.16, 0.92, alpha=0.15, color='grey') 
+plt.xlim(-0.5,1.5 )  
+plt.ylim(-20,25)
+
+
+
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('Δ Puncta')    
+ax.set_xlabel('')
+
+#ROC LD
+ax = plt.subplot(row,column,10)
+ax = sns.pointplot(x="Time", y="Puncta_delta", data=LD_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#5ec0eb')
+ax.tick_params(axis='both', which='major', labelsize=14)  
+plt.xlim(-0.5,1.5 )  
+ax.axvspan(0.16, 0.92, alpha=0.55, color='grey') 
+plt.ylim(-75,100) 
+
+# ax.tick_params(
+#     axis='x',          # changes apply to the x-axis
+#     which='both',      # both major and minor ticks are affected
+#     bottom=False,      # ticks along the bottom edge are off
+#     top=False,         # ticks along the top edge are off
+#     labelbottom=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+#ROC LL
+ax = plt.subplot(row,column,11)
+ax = sns.pointplot(x="Time", y="Puncta_delta", data=LL_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#dd90b5')
+
+plt.xlim(-0.5,1.5 )  
+ax.axvspan(0.16, 0.92, alpha=0.3, color='khaki') 
+plt.ylim(-75,100) 
+
+
+ax.tick_params(
+    axis='y',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45) 
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+
+
+#ROC FR
+ax = plt.subplot(row,column,12)
+ax = sns.pointplot(x="Time", y="Puncta_delta", data=FR_group_no7,hue="Fish_ID",ci=68,dodge=False, color = '#00ac87')
+
+plt.xlim(-0.5,1.5 )
+ax.axvspan(0.16, 0.92, alpha=0.3, color='khaki')
+plt.ylim(-75,100) 
+
+
+ax.tick_params(
+    axis='y',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=False,left=False,
+    labelleft=False) # labels along the bottom edge are off
+ax.get_legend().remove()
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+sns.despine()
+# ADDED: Remove labels.
+ax.set_ylabel('')    
+ax.set_xlabel('')
+#%%
+fig.tight_layout()
+#%%
+# plt.savefig('20210430_3T_puncta_fig_color_big.png', transparent=True, dpi=1200)
+#%%
+#%%
+import pingouin as pg
+
+#only LD and LL
+ld_ll= data_combined_3T[data_combined_3T.Condition !='FR']
+
+#%%
+sns.set()
+sns.pointplot(data=ld_ll, x='Time', y='Puncta', hue='Condition', dodge=True, markers=['o', 's'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = ld_ll.groupby(['Time','Condition'])['Puncta'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=ld_ll,dv='Puncta',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+
+#%% post hoc test
+posthocs = pg.pairwise_ttests(dv='Puncta', within='Time', between='Condition',
+                              subject='Fish_ID', data=ld_ll)
+pg.print_table(posthocs)
+
+#%% all conditions
+sns.set()
+sns.pointplot(data=data_combined_3T, x='Time', y='Puncta', hue='Condition', dodge=True, markers=['o', 's','x'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = data_combined_3T.groupby(['Time','Condition'])['Puncta'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=data_combined_3T,dv='Puncta',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+
+#%%
+posthocs = pg.pairwise_ttests(dv='Puncta', within='Time', between='Condition',
+                              subject='Fish_ID', data=data_combined_3T)
+pg.print_table(posthocs)
+
+
+#%% RM ANOVA
+
+aov= pg.rm_anova(data=ld_ll,dv='Puncta',within=['Time','Condition'],subject='Fish_ID')
+pg.print_table(aov)
+
+#%%
+"""
+for RoC
+"""
+#%%
+sns.set()
+sns.pointplot(data=data_combined_3T_no7, x='Time', y='RoC', hue='Condition', dodge=True, markers=['o', 's','x'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = data_combined_3T_no7.groupby(['Time','Condition'])['RoC'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=data_combined_3T,dv='RoC',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+#%%
+posthocs = pg.pairwise_ttests(dv='RoC', within='Time', between='Condition',
+                              subject='Fish_ID', data=data_combined_3T_no7)
+pg.print_table(posthocs)
+
+#%%
+"""
+for z score
+"""
+#%%
+sns.set()
+sns.pointplot(data=data_combined_3T, x='Time', y='Puncta_zscore', hue='Condition', dodge=True, markers=['o', 's','x'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = data_combined_3T.groupby(['Time','Condition'])['Puncta_zscore'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=data_combined_3T,dv='Puncta_zscore',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+#%%
+posthocs = pg.pairwise_ttests(dv='Puncta_zscore', within='Time', between='Condition',
+                              subject='Fish_ID', data=data_combined_3T)
+pg.print_table(posthocs)
+
+#%%
+"""
+for baseline_perchange
+"""
+#%%
+sns.set()
+sns.pointplot(data=data_combined_3T, x='Time', y='Baseline_perch', hue='Condition', dodge=True, markers=['o', 's','x'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = data_combined_3T.groupby(['Time','Condition'])['Baseline_perch'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=data_combined_3T,dv='Baseline_perch',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+#%%
+posthocs = pg.pairwise_ttests(dv='Baseline_perch', within='Time', between='Condition',
+                              subject='Fish_ID', data=data_combined_3T)
+pg.print_table(posthocs)
+
+
+#%%
+#%%
+"""for absolute delta puncta change
+"""
+#%%
+sns.set()
+sns.pointplot(data=data_combined_3T_no7, x='Time', y='Puncta_delta', hue='Condition', dodge=True, markers=['o', 's','x'],
+	      capsize=.1, errwidth=1, palette='colorblind')
+#%%
+table = data_combined_3T.groupby(['Time','Condition'])['Puncta_delta'].agg(['mean','std']).round(2)
+print(table)
+#%%
+aov= pg.mixed_anova(data=data_combined_3T_no7,dv='Puncta_delta',within='Time',between='Condition',subject='Fish_ID')
+pg.print_table(aov)
+#%%
+posthocs = pg.pairwise_ttests(dv='Puncta_delta', within='Time', between='Condition',
+                              subject='Fish_ID', data=data_combined_3T_no7)
+pg.print_table(posthocs)
